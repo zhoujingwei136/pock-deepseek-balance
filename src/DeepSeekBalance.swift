@@ -10,6 +10,7 @@ enum DSBPrefs {
     static let autoKey   = "autoRefresh"
     static let emojiKey  = "emojiRules"
     static let showKey   = "showEmoji"
+    static let edgeKey   = "edgeEffect"
     static let didChange = Notification.Name("DeepSeekBalancePreferencesDidChange")
 
     static var store: UserDefaults { UserDefaults(suiteName: suiteName) ?? .standard }
@@ -34,6 +35,12 @@ enum DSBPrefs {
     static var showEmoji: Bool {
         get { store.object(forKey: showKey) == nil ? true : store.bool(forKey: showKey) }
         set { store.set(newValue, forKey: showKey) }
+    }
+
+    /// 是否显示状态光效（那圈贴边光），默认开
+    static var edgeEffect: Bool {
+        get { store.object(forKey: edgeKey) == nil ? true : store.bool(forKey: edgeKey) }
+        set { store.set(newValue, forKey: edgeKey) }
     }
 
     // MARK: 余额区间 → 表情
@@ -270,7 +277,8 @@ final class DSBBalanceView: NSView {
 
     // MARK: 状态
 
-    func update(style: Style, text: String, emoji: String?, animated: Bool = true) {
+    func update(style: Style, text: String, emoji: String?,
+                animated: Bool = true, edgeEnabled: Bool = true) {
         let newEmoji = emoji ?? ""
         let scale = window?.backingScaleFactor ?? 2
         if newEmoji != lastEmoji {
@@ -281,7 +289,7 @@ final class DSBBalanceView: NSView {
             lastAmount = text
             amountSprite = Self.makeSprite(text, font: amountFont, color: amountColor, scale: scale)
         }
-        applyEdge(style, animated: animated)
+        applyEdge(style, animated: animated, enabled: edgeEnabled)
         invalidateIntrinsicContentSize()
         needsDisplay = true
     }
@@ -289,8 +297,14 @@ final class DSBBalanceView: NSView {
     private var lastEmoji = "\u{0}"
     private var lastAmount = "\u{0}"
 
-    private func applyEdge(_ style: Style, animated: Bool) {
+    private func applyEdge(_ style: Style, animated: Bool, enabled: Bool) {
         edgeView.layer?.removeAllAnimations()
+
+        // 关掉光效时，彻底不显示这一圈（连失败时的淡红边也不留）
+        guard enabled else {
+            edgeView.isHidden = true
+            return
+        }
 
         let color: NSColor
         let restingOpacity: Float
@@ -458,7 +472,8 @@ public class DeepSeekBalance: NSObject, PKWidget {
         super.init()
         self.view = card
         card.onTap = { [weak self] in self?.refresh(force: true) }
-        card.update(style: .unknown, text: "未设置", emoji: nil, animated: false)
+        card.update(style: .unknown, text: "未设置", emoji: nil,
+                    animated: false, edgeEnabled: DSBPrefs.edgeEffect)
 
         // 偏好设置里改了 Key / 区间后，立刻同步
         observer = NotificationCenter.default.addObserver(
@@ -509,14 +524,16 @@ public class DeepSeekBalance: NSObject, PKWidget {
         let key = DSBPrefs.apiKey
         guard !key.isEmpty else {
             lastBalance = nil
-            card.update(style: .unknown, text: "未设置", emoji: nil)
+            card.update(style: .unknown, text: "未设置", emoji: nil,
+                        edgeEnabled: DSBPrefs.edgeEffect)
             return
         }
 
         inFlight = true
         card.update(style: .loading,
                     text: lastBalance?.display ?? "查询中…",
-                    emoji: lastEmoji)
+                    emoji: lastEmoji,
+                    edgeEnabled: DSBPrefs.edgeEffect)
 
         DSBClient.fetch(apiKey: key) { [weak self] result in
             guard let self = self else { return }
@@ -526,12 +543,14 @@ public class DeepSeekBalance: NSObject, PKWidget {
                 self.lastBalance = balance
                 self.card.update(style: .ok,
                                  text: balance.display,
-                                 emoji: DSBPrefs.emoji(for: balance.value))
+                                 emoji: DSBPrefs.emoji(for: balance.value),
+                                 edgeEnabled: DSBPrefs.edgeEffect)
             case .failure(let error):
                 // 保留上一次的金额，只用红边提示这次没查成
                 self.card.update(style: .failed,
                                  text: self.lastBalance?.display ?? Self.shortMessage(for: error),
-                                 emoji: self.lastEmoji)
+                                 emoji: self.lastEmoji,
+                                 edgeEnabled: DSBPrefs.edgeEffect)
             }
         }
     }

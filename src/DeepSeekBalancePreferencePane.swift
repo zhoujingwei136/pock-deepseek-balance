@@ -100,6 +100,13 @@ class DeepSeekBalancePreferencePane: NSViewController, PKWidgetPreference {
         return b
     }()
 
+    private lazy var edgeCheck: NSButton = {
+        let b = NSButton(checkboxWithTitle: "显示状态光效（查询中 / 成功 / 失败时的边缘光）",
+                         target: self, action: #selector(toggleEdge))
+        b.state = DSBPrefs.edgeEffect ? .on : .off
+        return b
+    }()
+
     private lazy var autoCheck: NSButton = {
         let b = NSButton(checkboxWithTitle: "每 5 分钟自动刷新一次",
                          target: self, action: #selector(toggleAuto))
@@ -177,7 +184,7 @@ class DeepSeekBalancePreferencePane: NSViewController, PKWidgetPreference {
         let stack = NSStackView(views: [
             title, subtitle, keyRow, statusLabel,
             separator, sectionTitle, sectionHint, showEmojiCheck,
-            rulesStack, ruleButtons, autoCheck, footnote
+            rulesStack, ruleButtons, edgeCheck, autoCheck, footnote
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -297,6 +304,11 @@ class DeepSeekBalancePreferencePane: NSViewController, PKWidgetPreference {
 
     @objc private func toggleShowEmoji() {
         DSBPrefs.showEmoji = (showEmojiCheck.state == .on)
+        NotificationCenter.default.post(name: DSBPrefs.didChange, object: nil)
+    }
+
+    @objc private func toggleEdge() {
+        DSBPrefs.edgeEffect = (edgeCheck.state == .on)
         NotificationCenter.default.post(name: DSBPrefs.didChange, object: nil)
     }
 
