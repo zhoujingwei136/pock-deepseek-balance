@@ -6,7 +6,14 @@
 #   ./build.sh --install    编译并安装到 Pock
 #
 # 只用 Command Line Tools，不需要 Xcode / CocoaPods / ibtool。
-# 首次运行会自动拉取并编译依赖（PockKit 0.2.0 + SnapKit），大约需要半分钟。
+# 首次运行会拉取并编译依赖（PockKit 0.2.0 + SnapKit），大约半分钟。
+#
+# 国内访问 GitHub 不稳定时，可以换成镜像后再跑：
+#   SNAPKIT_REPO=https://<镜像>/SnapKit/SnapKit.git \
+#   POCKKIT_REPO=https://<镜像>/pock/pockkit.git ./build.sh
+#
+# 只想直接用、不打算改代码的话，仓库里已经带了编译好的
+# DeepSeekBalance.pock，复制进 Pock 的组件目录即可，不需要跑这个脚本。
 #
 set -euo pipefail
 
@@ -20,6 +27,10 @@ DEPS="$BUILD/deps"
 TARGET="arm64-apple-macosx11.0"          # 带 Touch Bar 的机器最低是 macOS 11
 INSTALL="${1:-}"
 WIDGETS_DIR="$HOME/Library/Application Support/Pock/Widgets"
+
+# 依赖地址，可用环境变量覆盖
+SNAPKIT_REPO="${SNAPKIT_REPO:-https://github.com/SnapKit/SnapKit.git}"
+POCKKIT_REPO="${POCKKIT_REPO:-https://github.com/pock/pockkit.git}"
 
 export SWIFT_EXEC_CACHE="$BUILD"
 mkdir -p "$FW" "$CACHE" "$DEPS"
@@ -43,16 +54,53 @@ build_module() {          # $1 = 模块名，其余参数转给 swiftc
         -o "$FW/$n.framework/Versions/A/$n" "$@"
 }
 
+# GitHub 在国内经常连不上，重试几次再放弃
+clone_with_retry() {      # $1 = 仓库地址  $2 = 目标目录  其余 = git clone 参数
+    local url="$1" dest="$2"; shift 2
+    [ -d "$dest" ] && return 0
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        if git clone -q "$@" "$url" "$dest" 2>/dev/null; then
+            return 0
+        fi
+        rm -rf "$dest"
+        if [ "$attempt" -lt 5 ]; then
+            echo "    下载失败，重试（$attempt/5）…" >&2
+            sleep 3
+        fi
+    done
+    return 1
+}
+
 # ---------------------------------------------------------------------------
-# 依赖：PockKit 0.2.0（必须和 Pock 0.9.0 内置的版本一致，否则符号对不上）
+# 依赖：PockKit 必须锁 0.2.0，和 Pock 0.9.0 内置的版本一致，否则符号对不上
 # ---------------------------------------------------------------------------
 if [ ! -f "$FW/PockKit.framework/Versions/A/PockKit" ]; then
     echo "==> 首次构建，拉取并编译依赖"
 
-    [ -d "$DEPS/SnapKit" ] || git clone --depth 1 -q \
-        https://github.com/SnapKit/SnapKit.git "$DEPS/SnapKit"
-    [ -d "$DEPS/pockkit" ] || git clone --depth 1 -q --branch 0.2.0 \
-        https://github.com/pock/pockkit.git "$DEPS/pockkit"
+    clone_with_retry "$SNAPKIT_REPO" "$DEPS/SnapKit" --depth 1 || {
+        cat >&2 <<HINT
+错误：无法下载 SnapKit（$SNAPKIT_REPO）
+
+  网络问题的话，换镜像后重试：
+    SNAPKIT_REPO=https://<镜像>/SnapKit/SnapKit.git ./build.sh
+
+  或者直接用仓库里预构建好的 DeepSeekBalance.pock，不需要编译。
+HINT
+        exit 1
+    }
+
+    clone_with_retry "$POCKKIT_REPO" "$DEPS/pockkit" --depth 1 --branch 0.2.0 || {
+        cat >&2 <<HINT
+错误：无法下载 PockKit 0.2.0（$POCKKIT_REPO）
+
+  网络问题的话，换镜像后重试：
+    POCKKIT_REPO=https://<镜像>/pock/pockkit.git ./build.sh
+
+  或者直接用仓库里预构建好的 DeepSeekBalance.pock，不需要编译。
+HINT
+        exit 1
+    }
 
     # PockKit 0.2.0 这个 tag 的源码本身有残缺：部分文件在用 NSView / CGFloat
     # 却没有 import AppKit，直接编会报 cannot find type 'NSView' in scope。

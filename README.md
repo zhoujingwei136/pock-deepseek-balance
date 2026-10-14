@@ -60,6 +60,15 @@ pkill -x Pock; open -a /Applications/Pock.app
 
 首次运行会自动拉取并编译依赖（PockKit 0.2.0 + SnapKit），大约半分钟。
 
+> 国内访问 GitHub 不稳定时脚本会自动重试 5 次；仍然失败的话可以换镜像：
+>
+> ```bash
+> SNAPKIT_REPO=https://<镜像>/SnapKit/SnapKit.git \
+> POCKKIT_REPO=https://<镜像>/pock/pockkit.git ./build.sh
+> ```
+>
+> 只是使用、不打算改代码的话，直接复制仓库里预构建好的 `DeepSeekBalance.pock` 就行，不必编译。
+
 ---
 
 ## 使用
