@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.zhoujingwei.pock.DeepSeekBalance</string>
+	<key>CFBundleExecutable</key>
+	<string>DeepSeekBalance</string>
+	<key>CFBundleName</key>
+	<string>DeepSeekBalance</string>
+	<key>CFBundleDisplayName</key>
+	<string>DeepSeek 余额</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSPrincipalClass</key>
+	<string>DeepSeekBalance</string>
+	<key>PKWidgetAuthor</key>
+	<string>周经纬</string>
+	<!-- 偏好设置面板的类名（@objc(DeepSeekBalancePreferencePane)） -->
+	<key>PKWidgetPreferenceClass</key>
+	<string>DeepSeekBalancePreferencePane</string>
+</dict>
+</plist>
